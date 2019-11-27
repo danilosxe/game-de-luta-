@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+    <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width">
+    <!-- This is a wide open CSP declaration. To lock this down for production, see below. -->
+
+        <title></title>
+
+        <style>
+          
+
+        </style>
+    </head>
+
+    <body>
+        <canvas width="800" height="600"></canvas>
+        
+        
+        <script>
+            let cnv = document.querySelector('canvas');
+            let ctx = cnv.getContext('2d');
+
+            let posicao = 0;//Indicador da posição atual do personagem
+            let NUM_POSICOES = 2;//Quantidade de imagens que compõem o movimento
+
+            //recursos
+            let fundo = new Image();
+            let carro = new Image();
+            let mychar = new Image();
+            let habilidade1 = new Image();
+            let explosao = new Image();
+            
+
+            //Teclas
+            let left = 37, up = 38, right = 39, down = 40, d = 68, q = 81, backSpace = 32;
+
+            //Movimentos
+            let mvLeft = mvUp = mvRight = mvDown = false;
+
+            //objetos
+            let sprites = [];
+            let obistaculos = [];
+            let solo = [];
+
+            //Objetos instanciados com os seguintes parâmetros: posX, posY, Largura, Altura e cor
+            let char = {
+                img: mychar,
+                x: 30,
+                y: 0,
+                width: 108,
+		        height: 184,
+                cor: 'rgb(100,100,100)',
+                abQ: { img: habilidade1, x:0, y:0, width: 50, height: 50, status: false},
+                voando: false,
+                gravidade: 1.5,
+                velocidade: 0,
+                foracaDoPulo: 15.5,
+                qntDePulos: 0,
+                velDePassos: 5,
+                passos: 5,
+                atualiza: function(){
+
+                    if(this.voando == false){
+                    this.velocidade += this.gravidade;
+                    this.y += this.velocidade;
+                    }
+                    
+                    if(this.voando == true && (this.y + this.height) > meuSolo.y){
+                        this.y = meuSolo.y - this.height;
+                        this.voando = false;
+                    }
+                    if(this.voando == true){
+                        this.passos = 5;
+                    }
+
+                    //alinhar personagem com o solo 
+                    if(this.y > meuSolo.y - this.height && this.voando == false ){
+                        this.y = meuSolo.y - this.height;
+                        this.qntDePulos = 0;
+                        this.passos = 20;
+                    }
+
+                    //personagem sube emcima do bloco
+                    if(this.y > obistaculo.y - this.height && (this.x + this.width) > obistaculo.x && this.x < (obistaculo.x + obistaculo.width) && this.voando == false){
+                        this.qntDePulos = 0;
+                        this.y = obistaculo.y - this.height;
+                        this.x += -1;
+                    }
+                    
+                    //se a habilidade sair  do campo de visão
+                    if(this.abQ.x > cnv.width){
+                        this.abQ.status = false 
+                    }
+                   
+                   //posição inicial das habilidades
+                    if(char.abQ.status == false){
+                    this.abQ.y = this.y + 65; 
+                    this.abQ.x = this.x + char.width;
+                    }
+
+                    if((this.abQ.y + this.abQ.height) >= obistaculo.y && (this.abQ.x + this.abQ.width) >= obistaculo.x && this.abQ.status == true){
+                        obistaculo.status = 'morto';
+                        obistaculo.x = cnv.width;
+                        this.abQ.status = false;
+                        setTimeout(function(){obistaculo.status = 'vivo';}, 1000);
+                    }
+
+                    
+                     
+                },
+
+                pular: function(){
+                    
+                    if(this.qntDePulos < 1 && this.voando == false){
+                        this.velocidade = -this.foracaDoPulo;
+                        this.passos += 20;
+                        this.gravidade = 1;
+                        this.qntDePulos++;
+                    }
+                },
+
+                andar: function(){
+                    char.x += char.passos;
+                }
+ 
+                };
+                sprites.push(char);
+
+            let meuSolo = {
+                x: 0,
+		        y: 590,
+		        width: 512,
+		        height: 200,
+                cor: 'rgba(0,0,0,0)'
+            };
+            sprites.push(meuSolo);
+
+            let obistaculo = {
+                x: 800,
+                y: 0,
+                status: 'vivo',
+                explode: {x: 0, y:0 }, 
+                width: 50,
+                height: 184,
+                cor: 'rgb(0,0,0)',
+                movimento: function(){
+                   if(this.x <= 0 && this.status == 'vivo'){
+                       this.x = cnv.width;
+                   }
+
+                   if(this.x >= (char.x) && this.x <= (char.x + char.width) && (this.y + this.height) == (char.y + char.height)){
+                        obistaculo.x = cnv.width;
+                   }
+
+                   if(this.status == 'vivo'){
+                        this.x += -1;
+                        this.y = meuSolo.y - this.height;
+                        this.explode.x = this.x;      
+                    }
+
+                    if(this.status == 'morto'){
+                        
+                        this.explode.y = this.y;    
+                    }
+                }
+            };
+            obistaculos.push(obistaculo);
+
+
+                window.addEventListener('keydown', function(e){
+                    let key = e.keyCode;
+                    switch(key){
+                        case up:
+                            if(char.voando == false){
+                                char.pular();
+                                posicao = 0;
+                            }else{
+                                char.y += -char.passos;
+                            }
+                            break;
+                        case right:
+                             char.x += char.passos;
+                             posicao = 1;
+                            break;  
+                        case left: 
+                            char.x += -char.passos;
+                            posicao = 2;
+                            break;
+                        case down:
+                            if(char.voando == true){
+                                char.y += +char.passos;
+                            }     
+                            break; 
+                        case q:
+                            posicao = 4;
+                            char.abQ.status = true; 
+                            break;
+                        case backSpace:  
+                             if(char.voando == false){
+                             char.voando = true;
+                             }else{
+                                char.voando = false;
+                             }
+                             break;
+                                     
+                    }
+                })
+
+                window.addEventListener('keyup', function(e){
+                    let key = e.keyCode;
+                    switch(key){
+                        case up:
+                            posicao = 0;
+                            break;
+                        case right:
+                             posicao = 0;
+                            break;  
+                        case left: 
+                            posicao = 0;
+                            break; 
+                        case q:
+                            posicao = 0;
+                            break;     
+                    }
+                })
+            
+            //funções
+            function loop(){
+                window.requestAnimationFrame(loop,cnv);
+                update();
+                render();
+            }
+
+            function update(){
+                char.atualiza();
+                obistaculo.movimento();
+            }
+
+
+            //Renderização ou desenho na tela
+            function render(){
+                mychar.src = 'sprites/'+posicao+'.png';
+                fundo.src = 'sprites/fundo.jpg';
+                habilidade1.src = 'sprites/6.png';
+                explosao.src = 'sprites/bum0.png';
+                ctx.clearRect(0,0,512,512);
+                ctx.drawImage(fundo, 0, 0, Math.floor(cnv.width), Math.floor(cnv.height));
+                ctx.drawImage(char.img, 0, 0, 27, 46, char.x, char.y, char.width, char.height);
+                
+                if(obistaculo.status == 'vivo'){
+                        ctx.fillStyle = obistaculo.cor;
+                        ctx.fillRect(obistaculo.x, obistaculo.y, obistaculo.width, obistaculo.height);
+                }
+
+                if(obistaculo.status == 'morto'){
+                    ctx.drawImage(explosao, 250, 0, 1200, 1200, obistaculo.explode.x, obistaculo.explode.y, 200, 200);
+                    
+                }
+                
+                if(char.abQ.status == true){
+                    char.abQ.x += 5;
+                    ctx.drawImage(char.abQ.img, 0, 0, 16, 12, Math.floor(char.abQ.x), Math.floor(char.abQ.y), char.abQ.width, char.abQ.height)
+
+                }
+                
+                //ctx.fillRect(char.x, char.y, char.width, char.height);
+                ctx.fillStyle = meuSolo.cor;
+                ctx.fillRect(meuSolo.x, meuSolo.y, meuSolo.width, meuSolo.height);
+                
+                
+                
+
+            }
+
+            loop();
+
+
+        
+        </script>
+    </body>
+</html>
